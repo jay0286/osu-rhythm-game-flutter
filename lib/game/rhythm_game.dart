@@ -34,7 +34,7 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
   int combo = 0;
   late TextComponent scoreText;
   late TextComponent comboText;
-  late TextComponent audioStatusText;
+  TextComponent? audioStatusText;
   Uint8List? audioData;
   Uint8List? backgroundData;
   SpriteComponent? backgroundSprite;
@@ -97,7 +97,7 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
         ),
       ),
     );
-    add(audioStatusText);
+    add(audioStatusText!);
 
     audioPlayer = AudioPlayer();
   }
@@ -107,7 +107,6 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
 
     for (final hitObject in beatmap.hitObjects) {
       final lane = (hitObject.x * laneCount ~/ 512).clamp(0, laneCount - 1);
-      final noteTime = hitObject.time / 1000.0;
 
       final note = Note(
         lane: lane,
@@ -116,7 +115,7 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
         speed: noteSpeed,
         position: Vector2(
           lane * laneWidth + (laneWidth - 60) / 2,
-          -noteTime * noteSpeed + judgeLineY,
+          judgeLineY - (hitObject.time / 1000.0 * noteSpeed),
         ),
         size: Vector2(60, noteHeight),
       );
@@ -128,7 +127,8 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
 
   void setAudioData(Uint8List data) {
     audioData = data;
-    audioStatusText.text = 'Audio: Loaded (${(data.length / 1024).round()}KB)';
+    // audioStatusText가 초기화된 후에만 업데이트
+    audioStatusText?.text = 'Audio: Loaded (${(data.length / 1024).round()}KB)';
   }
 
   void setBackground(Uint8List data) async {
@@ -159,29 +159,45 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
   }
 
   void startGame() async {
+    print('RhythmGame.startGame() called');
+    print('Notes count: ${notes.length}');
+
     isPlaying = true;
     elapsedTime = 0;
     currentNoteIndex = 0;
     audioStarted = false;
 
+    // Clear previous notes
+    for (final note in notes) {
+      if (note.isMounted) {
+        note.removeFromParent();
+      }
+    }
+
+    // Reset note positions for the new game
+    for (final note in notes) {
+      note.position.y = judgeLineY - (note.hitTime / 1000.0 * noteSpeed);
+      note.isHit = false;
+      note.isMissed = false;
+    }
+
     try {
       if (audioData != null) {
-        audioStatusText.text = 'Audio: Starting...';
+        audioStatusText?.text = 'Audio: Starting...';
         await audioPlayer.play(BytesSource(audioData!));
         audioStarted = true;
-        audioStatusText.text = 'Audio: Playing ♪';
+        audioStatusText?.text = 'Audio: Playing ♪';
       } else {
-        audioStatusText.text = 'Audio: No audio data';
+        audioStatusText?.text = 'Audio: No audio data';
       }
     } catch (e) {
       // 오디오 재생 실패, 게임은 계속 진행
       audioStarted = false;
-      audioStatusText.text = 'Audio: Failed to play';
+      audioStatusText?.text = 'Audio: Failed to play ($e)';
     }
 
-    for (final note in notes) {
-      add(note);
-    }
+    print('Game started, isPlaying: $isPlaying');
+    print('First few notes will spawn when their time comes');
   }
 
   @override
@@ -194,9 +210,11 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
 
     while (currentNoteIndex < notes.length) {
       final note = notes[currentNoteIndex];
-      if (note.hitTime - elapsedTime > 2000) break;
+      // 노트를 더 일찍 스폰 (5초 전부터)
+      if (note.hitTime - elapsedTime > 5000) break;
 
       if (!note.isMounted && !note.isHit && !note.isMissed) {
+        print('Spawning note ${currentNoteIndex} at time ${elapsedTime}ms (hit time: ${note.hitTime}ms)');
         add(note);
       }
       currentNoteIndex++;

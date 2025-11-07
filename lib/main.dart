@@ -128,6 +128,10 @@ Version:Normal
   }
 
   void startGame() {
+    print('Start Game button pressed');
+    print('loadedBeatmap: $loadedBeatmap');
+    print('currentAudioData: ${currentAudioData?.length ?? 0} bytes');
+
     if (loadedBeatmap != null) {
       if (currentAudioData != null) {
         game.setAudioData(currentAudioData!);
@@ -136,6 +140,9 @@ Version:Normal
       setState(() {
         gameStarted = true;
       });
+      print('Game started successfully');
+    } else {
+      print('Cannot start game: no beatmap loaded');
     }
   }
 
