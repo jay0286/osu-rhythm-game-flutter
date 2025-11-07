@@ -34,6 +34,7 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
   int combo = 0;
   late TextComponent scoreText;
   late TextComponent comboText;
+  late TextComponent audioStatusText;
   Uint8List? audioData;
   Uint8List? backgroundData;
   SpriteComponent? backgroundSprite;
@@ -86,6 +87,18 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
     );
     add(comboText);
 
+    audioStatusText = TextComponent(
+      text: 'Audio: Not loaded',
+      position: Vector2(10, 70),
+      textRenderer: TextPaint(
+        style: const TextStyle(
+          color: Colors.orange,
+          fontSize: 16,
+        ),
+      ),
+    );
+    add(audioStatusText);
+
     audioPlayer = AudioPlayer();
   }
 
@@ -115,6 +128,7 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
 
   void setAudioData(Uint8List data) {
     audioData = data;
+    audioStatusText.text = 'Audio: Loaded (${(data.length / 1024).round()}KB)';
   }
 
   void setBackground(Uint8List data) async {
@@ -150,9 +164,19 @@ class RhythmGame extends FlameGame with TapCallbacks, KeyboardEvents {
     currentNoteIndex = 0;
     audioStarted = false;
 
-    if (audioData != null) {
-      await audioPlayer.play(BytesSource(audioData!));
-      audioStarted = true;
+    try {
+      if (audioData != null) {
+        audioStatusText.text = 'Audio: Starting...';
+        await audioPlayer.play(BytesSource(audioData!));
+        audioStarted = true;
+        audioStatusText.text = 'Audio: Playing ♪';
+      } else {
+        audioStatusText.text = 'Audio: No audio data';
+      }
+    } catch (e) {
+      // 오디오 재생 실패, 게임은 계속 진행
+      audioStarted = false;
+      audioStatusText.text = 'Audio: Failed to play';
     }
 
     for (final note in notes) {

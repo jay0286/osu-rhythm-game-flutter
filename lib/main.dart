@@ -218,6 +218,12 @@ Version:Normal
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white60),
                 ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Note: Audio may require user interaction to play.\nClick "Start Game" to enable audio.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.orange, fontSize: 12),
+                ),
               ],
             ] else ...[
               SizedBox(
